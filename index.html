@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Beckhoff Search (Netlify Edition)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap');
+        :root { --beckhoff-blue: #005691; --background-color: #f0f2f5; --container-bg: #ffffff; --text-color: #1c1e21; --border-color: #dddfe2; --accent-color: #007bff; }
+        body { font-family: 'Roboto', sans-serif; background-color: var(--background-color); color: var(--text-color); display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .search-container { background-color: var(--container-bg); padding: 30px 35px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); width: 100%; max-width: 500px; text-align: center; }
+        .header { color: var(--beckhoff-blue); font-size: 24px; font-weight: 500; margin-bottom: 8px; }
+        .subtitle { font-size: 16px; color: #606770; margin-bottom: 25px; }
+        #errorCodeInput { width: 100%; padding: 14px 20px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; text-align: center; box-sizing: border-box; transition: all 0.2s; }
+        #errorCodeInput:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2); }
+        #searchButton { margin-top: 15px; width: 100%; padding: 14px 22px; background-image: linear-gradient(to right, #007bff, #0056b3); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        #searchButton:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0, 91, 179, 0.3); }
+        #searchButton.loading-state .text { display: none; }
+        #searchButton .spinner { display: none; width: 20px; height: 20px; border: 3px solid rgba(255, 255, 255, 0.5); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; }
+        #searchButton.loading-state .spinner { display: block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="search-container">
+        <h1 class="header">Beckhoff Search</h1>
+        <p class="subtitle">Ein Klick vom Fehlercode zum markierten Ergebnis.</p>
+        <input type="text" id="errorCodeInput" placeholder="z.B. 16992" autofocus>
+        <button id="searchButton">
+            <span class="text">Suchen & Markieren</span>
+            <div class="spinner"></div>
+        </button>
+    </div>
+    <script>
+        const errorCodeInput = document.getElementById('errorCodeInput');
+        const searchButton = document.getElementById('searchButton');
+        // Dieser relative Pfad funktioniert, weil Frontend und Backend bei Netlify zusammenleben.
+        const SERVICE_URL = '/.netlify/functions/search';
+
+        const performSearch = async () => {
+            const code = errorCodeInput.value.trim();
+            if (!code || !/^\d+$/.test(code)) return;
+            searchButton.classList.add('loading-state');
+            searchButton.disabled = true;
+
+            try {
+                const response = await fetch(`${SERVICE_URL}?code=${code}`);
+                const data = await response.json();
+                if (response.ok && data.url) {
+                    const finalUrl = `${data.url}#:~:text=${code}`;
+                    window.location.href = finalUrl;
+                } else {
+                    throw new Error(data.error || 'Der Fehlercode konnte nicht gefunden werden.');
+                }
+            } catch (error) {
+                alert(`Fehler: ${error.message}`);
+                searchButton.classList.remove('loading-state');
+                searchButton.disabled = false;
+            }
+        };
+        searchButton.addEventListener('click', performSearch);
+        errorCodeInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') performSearch(); });
+    </script>
+</body>
+</html>
